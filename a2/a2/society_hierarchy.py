@@ -531,20 +531,23 @@ class Society:
         >>> o = Society()
         >>> c1 = Citizen(1, "Starky Industries", 3024,  "Labourer", 50)
         >>> o.add_citizen(c1)
-        >>> o.get_head()
-        c1
+        >>> o.get_head() is c1
+        True
         >>> o.get_citizen(1) is c1
         True
         >>> o.get_citizen(2) is None
+        True
+        >>> c2 = Citizen(2, "Some Lab", 3024, "Lawyer", 30)
+        >>> o.add_citizen(c2, 1)
+        >>> o.get_citizen(2) is c2
         True
         """
         # Hint: Recall that self._head is a Citizen object, so any of Citizen's
         # methods can be used as a helper method here.
         if self.get_head() is not None:
-            if self.get_head().cid == cid:
-                return self._head
-            else:
-                self._head.get_citizen(cid)
+            return self._head.get_citizen(cid)
+        else:
+            return None
 
     def get_all_citizens(self) -> List[Citizen]:
         """Return a list of all citizens, in order of increasing cid.
@@ -565,6 +568,11 @@ class Society:
         >>> o.get_all_citizens() == [c1, c2, c3, c4, c5, c6]
         True
         """
+        if self._head is not None:
+            return merge([self.get_head()],
+                         self._head.get_all_subordinates())
+        else:
+            return []
 
     def add_citizen(self, citizen: Citizen, superior_id: int = None) -> None:
         """Add <citizen> to this Society as a subordinate of the Citizen with
@@ -595,6 +603,11 @@ class Society:
         >>> c1.get_superior() is c2
         True
         """
+        if superior_id is not None:
+            superior = self.get_citizen(superior_id)
+            citizen.become_subordinate_to(superior)
+        else:
+            self.set_head(citizen)
 
     def get_citizens_with_job(self, job: str) -> List[Citizen]:
         """Return a list of all citizens with the job <job>, in order of
@@ -616,6 +629,13 @@ class Society:
         >>> o.get_citizens_with_job('Manager') == [c1, c2, c4]
         True
         """
+        output_lst = []  # return list with all citizens with job <job>
+
+        all_citizens = self.get_all_citizens()  # get list of all citizens
+        for cit in all_citizens:
+            if cit.job == job:
+                output_lst.append(cit)
+        return output_lst
 
     ###########################################################################
     # TODO Task 2.3
