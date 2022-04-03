@@ -762,6 +762,8 @@ class DistrictLeader(Citizen):
         >>> c2.get_district_name()
         'District A'
         """
+        super().__init__(cid, manufacturer, model_year, job, rating)
+        self._district_name = district
 
     def get_district_citizens(self) -> List[Citizen]:
         """Return a list of all citizens in this DistrictLeader's district, in
@@ -779,6 +781,7 @@ class DistrictLeader(Citizen):
         >>> c1.get_district_citizens() == [c1, c2, c3]
         True
         """
+        return merge([self], self.get_all_subordinates())
 
     ###########################################################################
     # TODO Task 2.2
@@ -786,10 +789,12 @@ class DistrictLeader(Citizen):
     def get_district_name(self) -> str:
         """Return the name of the district that this DistrictLeader leads.
         """
+        return self._district_name
 
     def rename_district(self, district_name: str) -> None:
         """Rename this district leader's district to the given <district_name>.
         """
+        self._district_name = district_name
 
 
 ###########################################################################
