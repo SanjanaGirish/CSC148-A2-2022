@@ -35,6 +35,8 @@ def merge(lst1: list, lst2: list) -> list:
 
     >>> merge([1, 2, 5], [3, 4, 6])
     [1, 2, 3, 4, 5, 6]
+    >>> merge([], [1, 2])
+    [1, 2]
     """
 
     i1 = 0
@@ -220,15 +222,8 @@ class Citizen:
             subordinate._superior = self
         else:
             # add it in ascending order of their id
-            for i in range(len(self._subordinates)):
-                if subordinate.cid <= self._subordinates[i].cid:
-                    self._subordinates.insert(i, subordinate)
-                    subordinate._superior = self
-
-            # if id of the subordinate is greater than the last subordinate
-            if subordinate.cid > self._subordinates[-1].cid:
-                self._subordinates.append(subordinate)
-                subordinate._superior = self
+            self._subordinates = merge(self._subordinates, [subordinate])
+            subordinate._superior = self
 
     def remove_subordinate(self, cid: int) -> None:
         """Remove the subordinate with the ID <cid> from this Citizen's list
@@ -279,7 +274,7 @@ class Citizen:
         """
         if self._superior is not None:
             # remove citizen from old superior's list of subordinates
-            self._superior._subordinates.remove(self)
+            self._superior.remove_subordinate(self.cid)
 
         if superior is None:
             # If <superior> is None, just set this Citizen's
@@ -318,9 +313,11 @@ class Citizen:
         else:
             for sub in self._subordinates:
                 cit = sub.get_citizen(cid)
+
                 if cit is not None:
                     return cit
-            return cit
+
+        return None
 
     ###########################################################################
     # TODO Task 1.2
@@ -368,10 +365,10 @@ class Citizen:
         3
         """
         # Note: This method must call itself recursively
-        if self._superior is None:
+        if self.get_superior() is None:
             return self
         else:
-            return self._superior.get_society_head()
+            return self.get_superior().get_society_head()
 
     def get_closest_common_superior(self, cid: int) -> Citizen:
         """Return the closest common superior that this Citizen and the
@@ -402,8 +399,7 @@ class Citizen:
         True
         """
         # Note: This method must call itself recursively
-        cit = self.get_citizen(cid)
-        sub = self.get_all_subordinates()
+        # TODO: VERIFY METHOD AGAIN
         if self.get_citizen(cid) in self.get_all_subordinates():
             return self
         elif self.cid == cid:
@@ -429,8 +425,17 @@ class Citizen:
         >>> c1.become_subordinate_to(c2)
         >>> c1.get_district_name()
         'District A'
+        >>> c2.get_district_name()
+        'District A'
         """
         # Note: This method must call itself recursively
+
+        if isinstance(self, DistrictLeader):
+            return self.get_district_name()
+        elif self._superior is None:
+            return ''
+        else:
+            return self._superior.get_district_name()
 
     def rename_district(self, district_name: str) -> None:
         """Rename the immediate district which this Citizen is a part of to
@@ -449,6 +454,14 @@ class Citizen:
         'District B'
         """
         # Note: This method must call itself recursively
+
+        if isinstance(self, DistrictLeader):
+            self.rename_district(district_name)
+            return
+        elif self._superior is None:
+            return
+        else:
+            self._superior.rename_district(district_name)
 
     ###########################################################################
     # TODO Task 3.2 Helper Method
@@ -662,7 +675,78 @@ class Society:
 
         Precondition:
         - If <cid> is the id of a DistrictLeader, <district_name> must be None
+
+        >>> o = Society()
+        >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
+        >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
+        >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
+        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 30)
+        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
+        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
+        >>> o.add_citizen(c4, None)
+        >>> o.add_citizen(c2, 4)
+        >>> o.add_citizen(c6, 2)
+        >>> o.add_citizen(c1, 4)
+        >>> o.add_citizen(c3, 1)
+        >>> o.add_citizen(c5, 1)
+        >>> o.change_citizen_type(4, "Toronto")
+        >>> c4.get_district_name()
+        Toronto
         """
+
+        if self._head.cid == cid:
+            s = self._helper_change_citizen_type(district_name)
+            return s
+        else:
+            for subordinate in self._head.get_all_subordinates():
+                if subordinate.cid == cid:
+                    s = self._helper_change_citizen_type(district_name)
+                    return s
+
+    def _helper_change_citizen_type(self, district_name: str) -> Citizen:
+        """ Changes a chosen district leader to become only a citizen and a
+        citizen to become a district leader
+         >>> o = Society()
+        >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
+        >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
+        >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
+        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 30)
+        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
+        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
+        >>> o.add_citizen(c4, None)
+        >>> o.add_citizen(c2, 4)
+        >>> o.add_citizen(c6, 2)
+        >>> o.add_citizen(c1, 4)
+        >>> o.add_citizen(c3, 1)
+        >>> o.add_citizen(c5, 1)
+        >>> o._helper_change_citizen_type('Toronto')
+        """
+
+        if type(self) is DistrictLeader:
+            new_citizen = Citizen(self._head.cid, self._head.manufacturer,
+                                  self._head.model_year, self._head.job,
+                                  self._head.rating)
+            for subordinates in self._head.get_direct_subordinates():
+                subordinates.become_subordinate_to(new_citizen)
+            new_citizen.set_superior(self._head.get_superior())
+            self.delete_citizen(self._head.cid)
+            # change to become a new citizen object who is not a District Leader
+            # should have same place in hierarchy
+            # return the citizen object created
+            return new_citizen
+
+        if type(self) is Citizen:
+            new_DL = DistrictLeader(self._head.cid, self._head.manufacturer,
+                                    self._head.model_year, self._head.job,
+                                    self._head.rating, district_name)
+            for subordinates in self._head.get_direct_subordinates():
+                subordinates.become_subordinate_to(new_DL)
+            new_DL.set_superior(self._head.get_superior())
+            self.delete_citizen(self._head.cid)
+            # change to become a new District Leader object with district_name
+            # should have same place in hierarchy
+            # return the district leader created
+            return new_DL
 
     ###########################################################################
     # TODO Task 3.1
@@ -681,9 +765,46 @@ class Society:
         Precondition:
         - <citizen> has a superior (i.e., it is not the head of this Society),
           and is not a DistrictLeader.
+        >>> o = Society()
+        >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
+        >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
+        >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
+        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 100)
+        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
+        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
+        >>> c7 = Citizen(7, "CC", 3024, "Lawyer", 90)
+        >>> o.add_citizen(c4, None)
+        >>> o.add_citizen(c2, 4)
+        >>> o.add_citizen(c6, 2)
+        >>> o.add_citizen(c1, 4)
+        >>> o.add_citizen(c3, 1)
+        >>> o.add_citizen(c5, 1)
+        >>> o.add_citizen(c7, 6)
         """
         # Note: depending on how you implement this method, PyCharm may warn you
         # that this method 'may be static' -- feel free to ignore this
+
+        superior_c = self.get_citizen(citizen.cid).get_superior()
+        superior_job = superior_c.job
+        superior_superior = superior_c.get_superior()
+
+        # swap jobs between citizen and superior
+        superior_job, citizen.job = citizen.job, superior_job
+
+        # change citizen type if superior is DistrictLeader
+        if isinstance(superior_c, DistrictLeader):
+            self.change_citizen_type(citizen.cid,
+                                     superior_c.get_district_name())
+            self.change_citizen_type(superior_c.cid, None)
+
+        # swap positions between citizen and superior
+        superior_c.remove_subordinate(citizen.cid)
+        sub = superior_c.get_all_subordinates()
+        superior_superior.add_subordinate(citizen)
+        for element in sub:
+            citizen.add_subordinate(element)
+
+        return citizen
 
     def promote_citizen(self, cid: int) -> None:
         """Promote the Citizen with cid <cid> until they either:
@@ -692,7 +813,39 @@ class Society:
         See the Assignment 2 handout for further details.
 
         Precondition: There is a Citizen with the cid <cid> in this Society.
+         >>> o = Society()
+        >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
+        >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
+        >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
+        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 100)
+        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
+        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
+        >>> c7 = Citizen(7, "CC", 3024, "Lawyer", 90)
+        >>> o.add_citizen(c4, None)
+        >>> o.add_citizen(c2, 4)
+        >>> o.add_citizen(c6, 2)
+        >>> o.add_citizen(c1, 4)
+        >>> o.add_citizen(c3, 1)
+        >>> o.add_citizen(c5, 1)
+        >>> o.add_citizen(c7, 6)
+        >>> print(o.get_head())
+        >>> o.promote_citizen(7)
+        >>> print(o.get_head())
         """
+        cit = self.get_citizen(cid)
+        # Only ordinary citizens, not district leaders, can be promoted.
+        if cit.get_superior() is None:
+            return
+        # have a superior with a higher rating than them
+        elif cit.get_superior().rating >= cit.rating:
+            return
+        # become DistrictLeader for their district.
+        elif isinstance(cit, DistrictLeader):
+            return
+        else:
+            self._swap_up(cit)
+            self.promote_citizen(cid)
+
 
     ###########################################################################
     # TODO Task 3.2
@@ -745,13 +898,21 @@ class DistrictLeader(Citizen):
     === Representation Invariants ===
     - All Citizen RIs are inherited.
     """
+    cid: int
+    manufacturer: str
+    model_year: int
+    job: str
+    rating: int
     _district_name: str
+    _name: str
+    _superior: Optional[Citizen]
+    _subordinates: List[Citizen]
 
     ###########################################################################
     # TODO Task 2.1
     ###########################################################################
-    def __init__(self, cid: int, manufacturer: str, model_year: int,
-                 job: str, rating: int, district: str) -> None:
+    def __init__(self, cid: int, manufacturer: str, model_year: int, job: str,
+                 rating: int, district: str) -> None:
         """Initialize this DistrictLeader with the ID <cid>, manufacturer
         <manufacturer>, model year <model_year>, job <job>, rating <rating>, and
         district name <district>.
@@ -761,7 +922,9 @@ class DistrictLeader(Citizen):
         'Some Lab'
         >>> c2.get_district_name()
         'District A'
+        >>> c1 = DistrictLeader(34, " ", 2002, " nothing ", 50, "District Y")
         """
+
         super().__init__(cid, manufacturer, model_year, job, rating)
         self._district_name = district
 
@@ -780,6 +943,18 @@ class DistrictLeader(Citizen):
         >>> c3.become_subordinate_to(c1)
         >>> c1.get_district_citizens() == [c1, c2, c3]
         True
+        >>> c1.get_district_citizens()[0].cid
+        1
+        >>> c1.get_district_citizens()[1].cid
+        2
+        >>> c1.get_district_citizens()[2].cid
+        3
+        >>> c0 = DistrictLeader(
+        ...     0, "Stuff", 3022, "High Commander", 70, "District A"
+        ... )
+        >>> c1.become_subordinate_to(c0)
+        >>> c0.get_district_citizens() == [c0, c1, c2, c3]
+        True
         """
         return merge([self], self.get_all_subordinates())
 
@@ -795,7 +970,6 @@ class DistrictLeader(Citizen):
         """Rename this district leader's district to the given <district_name>.
         """
         self._district_name = district_name
-
 
 ###########################################################################
 # ALL PROVIDED FUNCTIONS BELOW ARE COMPLETE, DO NOT CHANGE
