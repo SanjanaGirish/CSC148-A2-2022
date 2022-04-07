@@ -246,7 +246,7 @@ class Citizen:
         >>> c1.get_superior() is None
         True
         """
-        for sub in self._subordinates:
+        for sub in self.get_direct_subordinates():
             if sub.cid == cid:
                 self._subordinates.remove(sub)
                 sub._superior = None
@@ -486,6 +486,13 @@ class Citizen:
         'Starky Industries'
         """
         # Hint: This can be used as a helper function for `delete_citizen`
+        highest_sub = self.get_direct_subordinates()[0]
+        highest_rating = highest_sub.rating
+        for sub in self.get_direct_subordinates():
+            if sub.rating > highest_rating:
+                highest_rating = sub.rating
+                highest_sub = sub
+        return highest_sub
 
 
 class Society:
@@ -602,6 +609,9 @@ class Society:
         - Society does not already contain any Citizen with the same ID as
           <citizen>.
 
+          FAQ: We will only test add_citizen on cases where the citizen being
+          added has no existing subordinates (like in the provided sample tests)
+
         >>> o = Society()
         >>> c1 = Citizen(1, "Starky Industries", 3024, "Labourer", 50)
         >>> c2 = Citizen(2, "Some Lab", 3024, "Lawyer", 30)
@@ -677,7 +687,7 @@ class Society:
         - If <cid> is the id of a DistrictLeader, <district_name> must be None
 
         >>> o = Society()
-        >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
+        >>> c1 = DistrictLeader(1, "Starky Industries", 3024, "Manager", 50, "Toronto")
         >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
         >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
         >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 30)
@@ -689,64 +699,39 @@ class Society:
         >>> o.add_citizen(c1, 4)
         >>> o.add_citizen(c3, 1)
         >>> o.add_citizen(c5, 1)
-        >>> o.change_citizen_type(4, "Toronto")
-        >>> c4.get_district_name()
-        Toronto
+        >>> new_c4 = o.change_citizen_type(1)
+        >>> new_c4 == c4
+        False
+        >>> new_c4.get_district_name()
+        ''
         """
+        cit = self.get_citizen(cid)  # citizen we want to change type
+        sup = cit.get_superior()  # superior of citizen
+        new_cit = None
 
-        if self._head.cid == cid:
-            s = self._helper_change_citizen_type(district_name)
-            return s
+        # Initialise new Citizen/DistrictLeader
+        if isinstance(cit, DistrictLeader):
+            new_cit = Citizen(cid=cit.cid, model_year=cit.model_year,
+                              name=cit.manufacturer, job=cit.job,
+                              rating=cit.rating)
+        elif isinstance(cit, Citizen):
+            new_cit = DistrictLeader(cid=cit.cid, manufacturer=cit.manufacturer,
+                                     district=district_name,
+                                     model_year=cit.model_year, job=cit.job,
+                                     rating=cit.rating)
+
+        if sup is not None:
+            sup.remove_subordinate(cid)
+            sup.add_subordinate(new_cit)
+            for element in cit.get_direct_subordinates():
+                new_cit.add_subordinate(element)
         else:
-            for subordinate in self._head.get_all_subordinates():
-                if subordinate.cid == cid:
-                    s = self._helper_change_citizen_type(district_name)
-                    return s
+            # set new citizen to head and add subordinates of old back
+            self._head = new_cit
+            for element in cit.get_direct_subordinates():
+                new_cit.add_subordinate(element)
 
-    def _helper_change_citizen_type(self, district_name: str) -> Citizen:
-        """ Changes a chosen district leader to become only a citizen and a
-        citizen to become a district leader
-         >>> o = Society()
-        >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
-        >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
-        >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
-        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 30)
-        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
-        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
-        >>> o.add_citizen(c4, None)
-        >>> o.add_citizen(c2, 4)
-        >>> o.add_citizen(c6, 2)
-        >>> o.add_citizen(c1, 4)
-        >>> o.add_citizen(c3, 1)
-        >>> o.add_citizen(c5, 1)
-        >>> o._helper_change_citizen_type('Toronto')
-        """
-
-        if type(self) is DistrictLeader:
-            new_citizen = Citizen(self._head.cid, self._head.manufacturer,
-                                  self._head.model_year, self._head.job,
-                                  self._head.rating)
-            for subordinates in self._head.get_direct_subordinates():
-                subordinates.become_subordinate_to(new_citizen)
-            new_citizen.set_superior(self._head.get_superior())
-            self.delete_citizen(self._head.cid)
-            # change to become a new citizen object who is not a District Leader
-            # should have same place in hierarchy
-            # return the citizen object created
-            return new_citizen
-
-        if type(self) is Citizen:
-            new_DL = DistrictLeader(self._head.cid, self._head.manufacturer,
-                                    self._head.model_year, self._head.job,
-                                    self._head.rating, district_name)
-            for subordinates in self._head.get_direct_subordinates():
-                subordinates.become_subordinate_to(new_DL)
-            new_DL.set_superior(self._head.get_superior())
-            self.delete_citizen(self._head.cid)
-            # change to become a new District Leader object with district_name
-            # should have same place in hierarchy
-            # return the district leader created
-            return new_DL
+        return new_cit
 
     ###########################################################################
     # TODO Task 3.1
@@ -780,8 +765,10 @@ class Society:
         >>> o.add_citizen(c3, 1)
         >>> o.add_citizen(c5, 1)
         >>> o.add_citizen(c7, 6)
+        >>> new_c1 = o._swap_up(c2)
+        >>> o.get_head() is c2
+        True
         """
-        # Note: depending on how you implement this method, PyCharm may warn you
         # that this method 'may be static' -- feel free to ignore this
 
         superior_c = self.get_citizen(citizen.cid).get_superior()
@@ -793,16 +780,32 @@ class Society:
 
         # change citizen type if superior is DistrictLeader
         if isinstance(superior_c, DistrictLeader):
-            self.change_citizen_type(citizen.cid,
-                                     superior_c.get_district_name())
-            self.change_citizen_type(superior_c.cid, None)
+            citizen = self.change_citizen_type(citizen.cid,
+                                               superior_c.get_district_name())
+            superior_c = self.change_citizen_type(superior_c.cid, None)
 
-        # swap positions between citizen and superior
+        # subordinates of superior except which we wanna swap
+        sub_c = citizen.get_direct_subordinates()
         superior_c.remove_subordinate(citizen.cid)
-        sub = superior_c.get_all_subordinates()
-        superior_superior.add_subordinate(citizen)
-        for element in sub:
+        sub_superior = superior_c.get_direct_subordinates()
+
+        # remove subordinates
+        for element in citizen.get_direct_subordinates():
+            citizen.remove_subordinate(element.cid)
+        for element in superior_c.get_direct_subordinates():
+            superior_c.remove_subordinate(element.cid)
+
+        if superior_superior is not None:
+            superior_superior.remove_subordinate(superior_c.cid)
+            superior_superior.add_subordinate(citizen)
+        else:
+            self._head = citizen
+
+        citizen.add_subordinate(superior_c)
+        for element in sub_superior:
             citizen.add_subordinate(element)
+        for element in sub_c:
+            superior_c.add_subordinate(element)
 
         return citizen
 
@@ -812,12 +815,15 @@ class Society:
              - become DistrictLeader for their district.
         See the Assignment 2 handout for further details.
 
+        FAQ: Promote the Citizen with cid <cid> until they either:
+        - have a superior with a rating greater than or equal to them
+
         Precondition: There is a Citizen with the cid <cid> in this Society.
-         >>> o = Society()
+        >>> o = Society()
         >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
         >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
         >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
-        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 100)
+        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 40)
         >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
         >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
         >>> c7 = Citizen(7, "CC", 3024, "Lawyer", 90)
@@ -828,9 +834,9 @@ class Society:
         >>> o.add_citizen(c3, 1)
         >>> o.add_citizen(c5, 1)
         >>> o.add_citizen(c7, 6)
-        >>> print(o.get_head())
         >>> o.promote_citizen(7)
-        >>> print(o.get_head())
+        >>> o.get_head() is c7
+        True
         """
         cit = self.get_citizen(cid)
         # Only ordinary citizens, not district leaders, can be promoted.
@@ -846,11 +852,9 @@ class Society:
             self._swap_up(cit)
             self.promote_citizen(cid)
 
-
     ###########################################################################
     # TODO Task 3.2
     ###########################################################################
-
     def delete_citizen(self, cid: int) -> None:
         """Remove the Citizen with ID <cid> from this Society.
 
@@ -862,7 +866,47 @@ class Society:
         subordinates, the society becomes empty (the society head becomes None).
 
         Precondition: There is a Citizen with the cid <cid> in this Society.
+        >>> o = Society()
+        >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
+        >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
+        >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
+        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 40)
+        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
+        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
+        >>> c7 = Citizen(7, "CC", 3024, "Lawyer", 90)
+        >>> o.add_citizen(c4, None)
+        >>> o.add_citizen(c2, 4)
+        >>> o.add_citizen(c6, 2)
+        >>> o.add_citizen(c1, 4)
+        >>> o.add_citizen(c3, 1)
+        >>> o.add_citizen(c5, 1)
+        >>> o.add_citizen(c7, 6)
+        >>> o.delete_citizen(4)
+        >>> o.get_head() is c2
+        True
         """
+        cit = self.get_citizen(cid)
+        sub_cit = cit.get_direct_subordinates()
+
+        if self._head == cit:
+            if not sub_cit:
+                self._head = None
+            else:
+                highest_sub = self._head.get_highest_rated_subordinate()
+                self._head = highest_sub
+
+                sub_cit.remove(highest_sub)
+                for element in sub_cit:
+                    self._head.add_subordinate(element)
+        else:
+            sup = cit.get_superior()
+            if not sub_cit:
+                sup.remove_subordinate(cid)
+            else:
+                sup.remove_subordinate(cid)
+                for element in sub_cit:
+                    sup.add_subordinate(element)
+
 
 
 ###############################################################################
@@ -970,6 +1014,7 @@ class DistrictLeader(Citizen):
         """Rename this district leader's district to the given <district_name>.
         """
         self._district_name = district_name
+
 
 ###########################################################################
 # ALL PROVIDED FUNCTIONS BELOW ARE COMPLETE, DO NOT CHANGE
@@ -1090,20 +1135,22 @@ def create_from_file_demo() -> Society:
 if __name__ == "__main__":
     # As you complete your tasks, you can uncomment any of the function calls
     # and the print statement below to create and print out a sample society:
-    soc = simple_society_demo()
+    # soc = simple_society_demo()
     # soc = district_society_demo()
     # soc = promote_citizen_demo()
     # soc = create_from_file_demo()
     # print(soc)
-
-    # import doctest
-    # doctest.testmod()
     #
-    # import python_ta
-    # python_ta.check_all(config={
-    #     'allowed-import-modules': ['typing', '__future__',
-    #                                'python_ta', 'doctest'],
-    #     'disable': ['E9998', 'R0201'],
-    #     'max-args': 7,
-    #     'max-module-lines': 1600
-    # })
+    import doctest
+
+    doctest.testmod()
+
+    import python_ta
+
+    python_ta.check_all(config={
+        'allowed-import-modules': ['typing', '__future__',
+                                   'python_ta', 'doctest'],
+        'disable': ['E9998', 'R0201'],
+        'max-args': 7,
+        'max-module-lines': 1600
+    })
