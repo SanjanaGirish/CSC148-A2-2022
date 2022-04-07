@@ -884,7 +884,7 @@ class Society:
         See the Assignment 2 handout for further details.
 
         Precondition: There is a Citizen with the cid <cid> in this Society.
-         >>> o = Society()
+        >>> o = Society()
         >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
         >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
         >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
@@ -932,6 +932,36 @@ class Society:
         subordinates, the society becomes empty (the society head becomes None).
 
         Precondition: There is a Citizen with the cid <cid> in this Society.
+
+        >>> o = Society()
+        >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
+        >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
+        >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
+        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 100)
+        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
+        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
+        >>> c7 = Citizen(7, "CC", 3024, "Lawyer", 90)
+        >>> o.add_citizen(c4, None)
+        >>> o.delete_citizen(4)             # test 1
+        >>> o.get_citizen(4)
+        None
+        >>> o.add_citizen(c4, None)
+        >>> o.add_citizen(c2, 4)
+        >>> o.add_citizen(c6, 2)
+        >>> o.add_citizen(c1, 4)
+        >>> o.add_citizen(c3, 1)
+        >>> o.add_citizen(c5, 1)
+        >>> o.add_citizen(c7, 6)
+        >>> o.delete_citizen(4)
+        >>> o.get_head() == c2
+        True
+        >>> c2.get_direct_subordinates() == [c1, c6]
+        True
+        >>> o.delete_citizen(2)
+        >>> o.get_head() ==  c1
+        True
+        >>> c1.get_direct_subordinates() == [c6, c3, c5]
+        True
         """
 
 
