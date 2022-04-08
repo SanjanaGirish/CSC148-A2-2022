@@ -58,7 +58,7 @@ def merge(lst1: list, lst2: list) -> list:
 
 
 ###########################################################################
-# TODO Task 1: Citizen and Society
+# Task 1: Citizen and Society
 ###########################################################################
 class Citizen:
     """A Citizen: a citizen in a Society.
@@ -193,7 +193,7 @@ class Citizen:
         return self._subordinates[:]
 
     ###########################################################################
-    # TODO Task 1.1 (Helper methods)
+    # Task 1.1 (Helper methods)
     #
     # While not called by the client code, these methods may be helpful to
     # you and will be tested. You can (and should) call them in the other
@@ -320,7 +320,7 @@ class Citizen:
         return None
 
     ###########################################################################
-    # TODO Task 1.2
+    # Task 1.2
     ###########################################################################
 
     def get_all_subordinates(self) -> List[Citizen]:
@@ -399,7 +399,7 @@ class Citizen:
         True
         """
         # Note: This method must call itself recursively
-        # TODO: VERIFY METHOD AGAIN
+        # VERIFY METHOD AGAIN
         if self.get_citizen(cid) in self.get_all_subordinates():
             return self
         elif self.cid == cid:
@@ -407,9 +407,10 @@ class Citizen:
         else:
             if self._superior is not None:
                 return self._superior.get_closest_common_superior(cid)
+            return self.get_society_head()
 
     ###########################################################################
-    # TODO Task 2.2
+    # Task 2.2
     ###########################################################################
     def get_district_name(self) -> str:
         """Return the immediate district that the Citizen belongs to (or
@@ -464,7 +465,7 @@ class Citizen:
             self._superior.rename_district(district_name)
 
     ###########################################################################
-    # TODO Task 3.2 Helper Method
+    # Task 3.2 Helper Method
     ###########################################################################
     def get_highest_rated_subordinate(self) -> Citizen:
         """Return the direct subordinate of this Citizen with the highest
@@ -542,7 +543,7 @@ class Society:
         self._head = new_head
 
     ###########################################################################
-    # TODO Task 1.3
+    # Task 1.3
     ###########################################################################
     def get_citizen(self, cid: int) -> Optional[Citizen]:
         """Return the Citizen in this Society who has the ID <cid>. If no such
@@ -661,7 +662,7 @@ class Society:
         return output_lst
 
     ###########################################################################
-    # TODO Task 2.3
+    # Task 2.3
     ###########################################################################
     def change_citizen_type(self, cid: int,
                             district_name: Optional[str] = None) -> Citizen:
@@ -734,7 +735,7 @@ class Society:
         return new_cit
 
     ###########################################################################
-    # TODO Task 3.1
+    # Task 3.1
     ###########################################################################
     def _swap_up(self, citizen: Citizen) -> Citizen:
         """Swap <citizen> with their superior in this Society (they should
@@ -819,23 +820,22 @@ class Society:
         - have a superior with a rating greater than or equal to them
 
         Precondition: There is a Citizen with the cid <cid> in this Society.
-        >>> o = Society()
         >>> c1 = Citizen(1, "Starky Industries", 3024, "Manager", 50)
         >>> c2 = Citizen(2, "Hookins National Lab", 3024, "Manager", 65)
         >>> c3 = Citizen(3, "Starky Industries", 3024, "Labourer", 50)
-        >>> c4 = Citizen(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 40)
-        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 50)
-        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 30)
-        >>> c7 = Citizen(7, "CC", 3024, "Lawyer", 90)
-        >>> o.add_citizen(c4, None)
+        >>> c4 = DistrictLeader(4, "S.T.A.R.R.Y Lab", 3024, "Manager", 60, 'd')
+        >>> c5 = Citizen(5, "Hookins National Lab", 3024, "Labourer", 80)
+        >>> c6 = Citizen(6, "S.T.A.R.R.Y Lab", 3024, "Lawyer", 70)
+        >>> o = Society(c4)
         >>> o.add_citizen(c2, 4)
         >>> o.add_citizen(c6, 2)
         >>> o.add_citizen(c1, 4)
         >>> o.add_citizen(c3, 1)
         >>> o.add_citizen(c5, 1)
-        >>> o.add_citizen(c7, 6)
-        >>> o.promote_citizen(7)
-        >>> o.get_head() is c7
+        >>> o.promote_citizen(6)
+        >>> isinstance(o.get_citizen(6), DistrictLeader)
+        True
+        >>> not isinstance(o.get_citizen(4), DistrictLeader)
         True
         """
         cit = self.get_citizen(cid)
@@ -853,7 +853,7 @@ class Society:
             self.promote_citizen(cid)
 
     ###########################################################################
-    # TODO Task 3.2
+    # Task 3.2
     ###########################################################################
     def delete_citizen(self, cid: int) -> None:
         """Remove the Citizen with ID <cid> from this Society.
@@ -908,9 +908,8 @@ class Society:
                     sup.add_subordinate(element)
 
 
-
 ###############################################################################
-# TODO Task 2: DistrictLeader
+# Task 2: DistrictLeader
 ###############################################################################
 class DistrictLeader(Citizen):
     """The leader of a district in a society.
@@ -953,7 +952,7 @@ class DistrictLeader(Citizen):
     _subordinates: List[Citizen]
 
     ###########################################################################
-    # TODO Task 2.1
+    # Task 2.1
     ###########################################################################
     def __init__(self, cid: int, manufacturer: str, model_year: int, job: str,
                  rating: int, district: str) -> None:
@@ -1003,7 +1002,7 @@ class DistrictLeader(Citizen):
         return merge([self], self.get_all_subordinates())
 
     ###########################################################################
-    # TODO Task 2.2
+    # Task 2.2
     ###########################################################################
     def get_district_name(self) -> str:
         """Return the name of the district that this DistrictLeader leads.
